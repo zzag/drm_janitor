@@ -141,9 +141,43 @@ static const char usage[] =
     "  -d              Specify DRM device (default /dev/dri/card0).\n"
     "  -h              Show help message and quit.\n";
 
+static char *find_primary_node()
+{
+    int device_count = drmGetDevices2(0, NULL, 0);
+    if (device_count < 0) {
+        fprintf(stderr, "drmGetDevices2() failed: %s", strerror(-device_count));
+        return NULL;
+    }
+
+    drmDevice **devices = calloc(device_count, sizeof(drmDevice *));
+    if (!devices) {
+        return NULL;
+    }
+
+    device_count = drmGetDevices2(0, devices, device_count);
+    if (device_count < 0) {
+        fprintf(stderr, "drmGetDevices2() failed: %s", strerror(-device_count));
+        free(devices);
+        return NULL;
+    }
+
+    char *path = NULL;
+    for (int i = 0; i < device_count; ++i) {
+        if (devices[i]->available_nodes & (1 << DRM_NODE_PRIMARY)) {
+            path = strdup(devices[i]->nodes[DRM_NODE_PRIMARY]);
+            break;
+        }
+    }
+
+    drmFreeDevices(devices, device_count);
+    free(devices);
+
+    return path;
+}
+
 int main(int argc, char *argv[])
 {
-    char *device_path = "/dev/dri/card0";
+    char *device_path = NULL;
     int opt;
     while ((opt = getopt(argc, argv, "hd:")) != -1) {
         switch (opt) {
@@ -156,6 +190,14 @@ int main(int argc, char *argv[])
 	default:
 	    return EXIT_FAILURE;
 	}
+    }
+
+    if (!device_path) {
+        device_path = find_primary_node();
+        if (!device_path) {
+            fprintf(stderr, "Failed to find any primary node\n");
+            return -1;
+        }
     }
 
     struct device *device = device_open(device_path);

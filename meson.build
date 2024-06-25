@@ -11,6 +11,10 @@ project(
 
 cc = meson.get_compiler('c')
 
+add_project_arguments([
+    '-D_POSIX_C_SOURCE=200809L',
+], language: 'c')
+
 add_project_arguments(cc.get_supported_arguments([
     '-Wno-missing-braces',
     '-Wno-missing-field-initializers',
