@@ -281,6 +281,7 @@ int main(int argc, char *argv[])
     }
 
     device_close(device);
+    sleep(1); // otherwise Xorg may start with a black screen, seems like a race condition
 
     return EXIT_SUCCESS;
 }
