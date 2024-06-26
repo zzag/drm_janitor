@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
         add_property(req, obj, "CTM", 0);
         add_property(req, obj, "VRR_ENABLED", 0);
         add_property(req, obj, "OUT_FENCE_PTR", 0);
-        add_property(req, obj, "VALVE1_CRTC_REGAMMA_TF", 0);
+        add_property(req, obj, "AMD_CRTC_REGAMMA_TF", 0);
 
         object_free(obj);
     }
@@ -262,15 +262,15 @@ int main(int argc, char *argv[])
         add_property(req, obj, "alpha", 0xffff);
         // add_property(fd, plane_id, "zpos", )
 
-        add_property(req, obj, "VALVE1_PLANE_DEGAMMA_TF", 0);
-        add_property(req, obj, "VALVE1_PLANE_DEGAMMA_LUT", 0);
-        add_property(req, obj, "VALVE1_PLANE_CTM", 0);
-        add_property(req, obj, "VALVE1_PLANE_HDR_MULT", 0x100000000ULL);
-        add_property(req, obj, "VALVE1_PLANE_SHAPER_TF", 0);
-        add_property(req, obj, "VALVE1_PLANE_SHAPER_LUT", 0);
-        add_property(req, obj, "VALVE1_PLANE_LUT3D", 0);
-        add_property(req, obj, "VALVE1_PLANE_BLEND_TF", 0);
-        add_property(req, obj, "VALVE1_PLANE_BLEND_LUT", 0);
+        add_property(req, obj, "AMD_PLANE_DEGAMMA_TF", 0);
+        add_property(req, obj, "AMD_PLANE_DEGAMMA_LUT", 0);
+        add_property(req, obj, "AMD_PLANE_CTM", 0);
+        add_property(req, obj, "AMD_PLANE_HDR_MULT", 0x100000000ULL);
+        add_property(req, obj, "AMD_PLANE_SHAPER_TF", 0);
+        add_property(req, obj, "AMD_PLANE_SHAPER_LUT", 0);
+        add_property(req, obj, "AMD_PLANE_LUT3D", 0);
+        add_property(req, obj, "AMD_PLANE_BLEND_TF", 0);
+        add_property(req, obj, "AMD_PLANE_BLEND_LUT", 0);
 
         object_free(obj);
     }
