@@ -145,7 +145,6 @@ static char *find_primary_node()
 {
     int device_count = drmGetDevices2(0, NULL, 0);
     if (device_count < 0) {
-        fprintf(stderr, "drmGetDevices2() failed: %s", strerror(-device_count));
         return NULL;
     }
 
@@ -195,8 +194,7 @@ int main(int argc, char *argv[])
     if (!device_path) {
         device_path = find_primary_node();
         if (!device_path) {
-            fprintf(stderr, "Failed to find any primary node\n");
-            return -1;
+            return 0;
         }
     }
 
