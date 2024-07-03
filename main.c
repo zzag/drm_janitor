@@ -144,7 +144,7 @@ static const char usage[] =
 static char *find_primary_node()
 {
     int device_count = drmGetDevices2(0, NULL, 0);
-    if (device_count < 0) {
+    if (device_count <= 0) {
         return NULL;
     }
 
