@@ -22,11 +22,13 @@ add_project_arguments(cc.get_supported_arguments([
 ]), language: 'c')
 
 libdrm = dependency('libdrm')
+wayland_server = dependency('wayland-server')
+wlroots = dependency('wlroots')
 
 executable(
     'drm_janitor',
     files('main.c'),
-    dependencies: [libdrm],
+    dependencies: [libdrm, wayland_server, wlroots],
     install: true,
 )
 

@@ -5,12 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wayland-server.h>
+#include <wlr/backend/session.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
 struct device
 {
-    int fd;
+    struct wlr_session *session;
+    struct wlr_device *handle;
+
     drmModeRes *resources;
     drmModePlaneRes *plane_resources;
 };
@@ -22,38 +26,39 @@ struct object
     drmModePropertyPtr *props;
 };
 
-static struct device *device_open(const char *path)
+static struct device *device_open(struct wlr_session *session, const char *path)
 {
-    const int fd = open(path, O_RDWR);
-    if (fd < 0) {
-        fprintf(stderr, "open() failed: %s\n", strerror(errno));
+    struct wlr_device *handle = wlr_session_open_file(session, path);
+    if (handle == NULL) {
+        fprintf(stderr, "wlr_session_open_file() failed: %s\n", strerror(errno));
         return NULL;
     }
 
-    if (!drmIsKMS(fd)) {
+    if (!drmIsKMS(handle->fd)) {
         fprintf(stderr, "%s is not a KMS device\n", path);
         goto close_fd;
     }
 
-    if (drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1) != 0) {
+    if (drmSetClientCap(handle->fd, DRM_CLIENT_CAP_ATOMIC, 1) != 0) {
         fprintf(stderr, "drmSetClientCap(DRM_CLIENT_CAP_ATOMIC) failed\n");
         goto close_fd;
     }
 
-	drmModeRes *res = drmModeGetResources(fd);
+	drmModeRes *res = drmModeGetResources(handle->fd);
 	if (res == NULL) {
 		fprintf(stderr, "drmModeGetResources() failed\n");
 		goto close_fd;
 	}
 
-    drmModePlaneResPtr plane_res = drmModeGetPlaneResources(fd);
+    drmModePlaneResPtr plane_res = drmModeGetPlaneResources(handle->fd);
     if (plane_res == NULL) {
         fprintf(stderr, "drmModeGetPlaneResources() failed\n");
         goto free_resources;
     }
 
     struct device *device = calloc(1, sizeof(*device));
-    device->fd = fd;
+    device->session = session;
+    device->handle = handle;
     device->resources = res;
     device->plane_resources = plane_res;
 
@@ -63,14 +68,14 @@ free_resources:
     drmModeFreeResources(res);
 
 close_fd:
-    close(fd);
+    wlr_session_close_file(session, handle);
 
     return NULL;
 }
 
 static void device_close(struct device *device)
 {
-    close(device->fd);
+    wlr_session_close_file(device->session, device->handle);
 
     drmModeFreePlaneResources(device->plane_resources);
     drmModeFreeResources(device->resources);
@@ -80,14 +85,14 @@ static void device_close(struct device *device)
 
 static struct object *object_get(struct device *device, uint32_t object_id, uint32_t object_type)
 {
-    drmModeObjectPropertiesPtr object_props = drmModeObjectGetProperties(device->fd, object_id, object_type);
+    drmModeObjectPropertiesPtr object_props = drmModeObjectGetProperties(device->handle->fd, object_id, object_type);
     if (object_props == NULL) {
         return NULL;
     }
 
     drmModePropertyPtr *props = calloc(object_props->count_props, sizeof(drmModePropertyPtr));
     for (uint32_t j = 0; j < object_props->count_props; ++j) {
-        props[j] = drmModeGetProperty(device->fd, object_props->props[j]);
+        props[j] = drmModeGetProperty(device->handle->fd, object_props->props[j]);
     }
 
     struct object *object = calloc(1, sizeof(*object));
@@ -200,9 +205,16 @@ int main(int argc, char *argv[])
         }
     }
 
-    struct device *device = device_open(device_path);
+    struct wl_display *display = wl_display_create();
+    struct wlr_session *session = wlr_session_create(display);
+    if (session == NULL) {
+        fprintf(stderr, "Failed to create wlr_session\n");
+        goto error_session;
+    }
+
+    struct device *device = device_open(session, device_path);
     if (device == NULL) {
-        return EXIT_FAILURE;
+        goto error_device;
     }
 
     drmModeAtomicReq *req = drmModeAtomicAlloc();
@@ -275,13 +287,24 @@ int main(int argc, char *argv[])
         object_free(obj);
     }
 
-    int ret = drmModeAtomicCommit(device->fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
+    int ret = drmModeAtomicCommit(device->handle->fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
     if (ret != 0) {
         fprintf(stderr, "drmModeAtomicCommit() failed: %s\n", strerror(-ret));
     }
 
     device_close(device);
+    wlr_session_destroy(session);
+    wl_display_destroy(display);
+
     sleep(1); // otherwise Xorg may start with a black screen, seems like a race condition
 
     return EXIT_SUCCESS;
+
+error_device:
+    wlr_session_destroy(session);
+
+error_session:
+    wl_display_destroy(display);
+
+    return EXIT_FAILURE;
 }
